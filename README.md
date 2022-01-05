@@ -39,7 +39,7 @@ def main():
 Then, follow up with e.g.
 
 ```
-python -m perfkit.format_record --remove-time --pct-field total_time --pct-field total_queries < benchmark-logs.jsonl
+python -m perfkit.tools.format_record --remove-time --pct-field total_time --pct-field total_queries < benchmark-logs.jsonl
 ```
 
 to reformat the JSONL file into something that is more easily chartable (WIP :-) ).
