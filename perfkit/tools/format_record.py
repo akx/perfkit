@@ -1,6 +1,10 @@
 import argparse
+import itertools
 import json
+import statistics
 import sys
+from collections import defaultdict
+from numbers import Number
 from typing import List, Any, Dict, Iterable
 
 
@@ -33,6 +37,7 @@ def compute_pcts(data, fields: List[str]):
             **{
                 f"{key}_%": round(datum.get(key) / initial_pcts[key], 3)
                 for key in fields
+                if initial_pcts[key] is not None
             },
         }
 
@@ -48,15 +53,45 @@ def get_keys_in_order(dicts: Iterable[Dict[str, Any]]) -> List[str]:
     return keys
 
 
+def get_grouped_datum(key_field: str, key_value, grouped: Dict[str, list]):
+    grouped_datum = {key_field: key_value}
+    for key, values in grouped.items():
+        if all(isinstance(val, Number) for val in values):
+            grouped_datum[f"{key}_mean"] = round(statistics.mean(values), 3)
+            grouped_datum[f"{key}_median"] = statistics.median(values)
+            grouped_datum[f"{key}_sum"] = sum(values)
+        else:
+            if len(set(values)) != 1:
+                print(
+                    f"{key_field}={key_value}: Multiple values for grouped non-number {key}: {values}"
+                )
+            grouped_datum[key] = values[0]
+    return grouped_datum
+
+
+def group_by(data: List[Dict[str, Any]], key_field: str):
+    for group_key, group_data in itertools.groupby(data, lambda d: d.get(key_field)):
+        grouped = defaultdict(list)
+        for datum in group_data:
+            for key, value in datum.items():
+                if key == key_field:
+                    continue
+                grouped[key].append(value)
+        yield get_grouped_datum(key_field, group_key, grouped)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--remove-time", action="store_true", default=False)
+    ap.add_argument("--group-key", default=None)
     ap.add_argument("--pct-field", dest="pct_fields", action="append", default=[])
     ap.add_argument("--format", choices=("json", "gfm"), default="json")
     args = ap.parse_args()
     data = [
         flatten(json.loads(line), remove_time=args.remove_time) for line in sys.stdin
     ]
+    if args.group_key:
+        data = list(group_by(data, args.group_key))
     data = list(compute_pcts(data, fields=args.pct_fields))
     if args.format == "gfm":
         keys = get_keys_in_order(data)
