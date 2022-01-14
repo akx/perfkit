@@ -9,6 +9,7 @@ def flatten(datum: dict, *, remove_time: bool = False):
     datum["commit"] = datum["commit"][:9]
     query_counts = datum.pop("query_counts", {})
     times = datum.pop("times", {})
+    gauges = datum.pop("gauges", {})
     for key, count in query_counts.items():
         if key:
             datum[f"{key}_queries"] = count
@@ -16,6 +17,9 @@ def flatten(datum: dict, *, remove_time: bool = False):
     for key, duration in times.items():
         if key:
             datum[f"{key}_time"] = round(duration, 2)
+    for key, value in gauges.items():
+        if key:
+            datum[f"{key}"] = value
     if remove_time:
         datum.pop("time", None)
     return datum
